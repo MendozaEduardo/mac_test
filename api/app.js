@@ -1,52 +1,41 @@
-'use strict';
+var createError = require('http-errors');
+var express = require('express');
+var path = require('path');
+var cookieParser = require('cookie-parser');
+var logger = require('morgan');
 
-const express = require('express');
-const axios = require('axios');
+var indexRouter = require('./routes/index');
+var usersRouter = require('./routes/users');
 
-const port = 9000;
-const app = express();
+var app = express();
 
-const ifaces = require('os').networkInterfaces();
-console.log('ifaces', ifaces);
-let address;
+// view engine setup
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'jade');
 
-function getIPAddress() {
-    try {
-        Object.keys(ifaces).forEach((dev) => {
-            ifaces[dev].filter((details) => {
-                if (details.family === 'IPv4' && details.internal === false) {
-                    address = details.address;
-                }
-            });
-        });
-    } catch (error) {
-        console.log('Error: ', error);
-    }
-        console.log("Address: ", address ? address : '0.0.0.0');
-        return address ? address : '0.0.0.0';
-}
+app.use(logger('dev'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
+app.use(express.static(path.join(__dirname, 'public')));
 
-const ip = getIPAddress();
-console.log('IP: ', ip);
-// function to retrieve data
+app.use('/', indexRouter);
+app.use('/users', usersRouter);
 
-const getCountry = async (address) => {
-    try {
-        const response = await axios.get(
-            'https://ipvigilante.com/json/' + address
-        );
-        if (response.status == 200) {
-            let country = JSON.stringify(response.data.data.country_name);
-            console.log('Country: ', country);
-            return country;
-        } else return;
-    } catch (error) {
-        console.log('Error: ', error);
-    }
-};
-
-app.get('/', (req, res) => {
-    res.send (getCountry(ip));
+// catch 404 and forward to error handler
+app.use(function(req, res, next) {
+  next(createError(404));
 });
 
-app.listen(port, () => console.log('Listening from port: ', port));
+// error handler
+app.use(function(err, req, res, next) {
+  // set locals, only providing error in development
+  res.locals.message = err.message;
+  res.locals.error = req.app.get('env') === 'development' ? err : {};
+
+  // render the error page
+  res.status(err.status || 500);
+  res.render('error');
+});
+
+module.exports = app;
